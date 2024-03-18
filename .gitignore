@@ -3,4 +3,12 @@ factors_and_stock_returns.csv
 1000_unique_train.csv
 1000_unique_validation.csv
 1000_unique_test.csv
+top_1000_stocks.csv
+top_1000_train.csv
+top_1000_validation.csv
+top_1000_test.csv
+bottom_1000_stocks.csv
+bottom_1000_train.csv
+bottom_1000_validations.csv
+bottom_1000_test.csv
 .Rproj.user
