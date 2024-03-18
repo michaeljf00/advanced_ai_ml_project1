@@ -87,15 +87,13 @@ model <- keras_model_sequential() %>%
   layer_lstm(units = 50, return_sequences = TRUE, input_shape = c(ncol(X_train), 1)) %>%
   layer_lstm(units = 50) %>%
   layer_dense(units = 1)
-
+y_test
 # Compile the model
 model %>% compile(
   loss = 'mean_squared_error',
   optimizer = optimizer_adam(),
-  metrics = c('acciracy')
+  metrics = c('accuracy')
 )
-
-#run_model <- function(model, x_train, y_train, x_val, y_val, x_test, y_test) {
 
 # Train model
 history <- model %>% fit(
@@ -107,11 +105,5 @@ history <- model %>% fit(
 
 # Evlauate model
 
-test_metrics <- model %>% evaluate(X_test, y_test)
-test_metrics
-
-
-#return(list(validation_metrics = validation_metrics), test_metrics = test_metrics)
-#}
-
-#eval_results <- run_model(SimpleRNN, X_train, y_train, X_val, y_val, X_test, y_test)
+predicitons <- model %>% predict(X_test)
+mse <- mean((predictions - y_test)^2)
