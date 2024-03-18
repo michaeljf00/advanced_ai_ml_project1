@@ -1,2 +1,6 @@
 factors_and_stock_returns.csv
+1000_unique_stocks.csv
+1000_unique_train.csv
+1000_unique_validation.csv
+1000_unique_test.csv
 .Rproj.user
