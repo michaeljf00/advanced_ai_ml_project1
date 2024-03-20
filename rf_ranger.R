@@ -105,19 +105,33 @@ top_1000_data$test_data
 
 
 trControl <- trainControl(method = "cv",
-                          number = 5, 
+                          number = 3, 
                           allowParallel = TRUE,
                           verboseIter = TRUE)
 tuneGrid <- expand.grid(
   .mtry = 2:6,
   .splitrule = c("variance"),
-  .min.node.size = 5
+  .min.node.size = 1
 )
 rf_model <- train(return ~ .,
                   data = top_1000_data$train_data,
                   method = "ranger",
                   trControl = trControl,
                   tuneGrid = tuneGrid)
+# Predicting on the training data for in-sample R-squared
+in_sample_predictions <- predict(rf_model, newdata = top_1000_data$train_data)
+
+# Actual values from the training data
+in_sample_actuals <- top_1000_data$train_data$return
+
+# Calculating in-sample R-squared
+in_sample_ss_res <- sum((in_sample_actuals - in_sample_predictions)^2)
+in_sample_ss_tot <- sum((in_sample_actuals - mean(in_sample_actuals))^2)
+in_sample_r_squared <- 1 - (in_sample_ss_res / in_sample_ss_tot)
+
+# Displaying the in-sample R-squared value
+in_sample_r_squared/ nrow(top_1000_data$train_data)
+
 # Predicting on the test data
 predicted_values <- predict(rf_model, newdata = top_1000_data$test_data)
 
@@ -138,19 +152,43 @@ bot_1000_data$validation_data
 bot_1000_data$test_data
 
 trControl <- trainControl(method = "cv",
-                          number = 5, 
+                          number = 3, 
                           allowParallel = TRUE,
                           verboseIter = TRUE)
 tuneGrid <- expand.grid(
   .mtry = 2:6,
   .splitrule = c("variance"),
-  .min.node.size = 5
+  .min.node.size = 1
 )
 rf_model2 <- train(return ~ .,
                    data = bot_1000_data$train_data,
                    method = "ranger",
                    trControl = trControl,
                    tuneGrid = tuneGrid)
+# Actual values from the training data
+in_sample_predictions_bot <- predict(rf_model2, newdata = bot_1000_data$train_data)
+in_sample_actuals_bot <- bot_1000_data$train_data$return
+
+# Calculating in-sample R-squared
+in_sample_ss_res_bot <- sum((in_sample_actuals_bot - in_sample_predictions_bot)^2)
+in_sample_ss_tot_bot <- sum((in_sample_actuals_bot - mean(in_sample_actuals_bot))^2)
+in_sample_r_squared_bot <- 1 - (in_sample_ss_res_bot / in_sample_ss_tot_bot)
+
+# Displaying the in-sample R-squared value
+in_sample_r_squared_bot
+
+predicted_values_bot <- predict(rf_model2, newdata = bot_1000_data$test_data)
+
+# Actual values from the test data
+actual_values_bot <-  bot_1000_data$test_data$return
+
+# Calculating R-squared
+ss_res_bot <- sum((actual_values_bot - predicted_values_bot)^2)
+ss_tot_bot <- sum((actual_values_bot - mean(actual_values_bot))^2)
+r_squared_bot <- 1 - (ss_res_bot / ss_tot_bot)
+
+# Displaying the R-squared value
+r_squared_bot
 
 rf_model3 <- train(return ~ .,
                    data = train_data,
