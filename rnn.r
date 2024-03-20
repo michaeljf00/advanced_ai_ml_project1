@@ -189,3 +189,49 @@ bottom_1000_model_data <- top_bottom_split(bottom_1000)
 lstm_bottom_1000 <- lstm_fit(bottom_1000_model_data$X_train, bottom_1000_model_data$y_train, bottom_1000_model_data$X_val, bottom_1000_model_data$y_val)
 evaluate_model(lstm_bottom_1000, bottom_1000_model_data$X_test, bottom_1000_model_data$y_test)
 
+time_period_split <- function(dataset, start_date, end_date, period, train_ratio=0.7, validation_ratio=0.2, test_ratio=0.1) {
+  
+  # Loop through end_date - start_date times on dataset for each model
+  train_data <- c()
+  validation_data <- c()
+  test_data <- c()
+  
+  n <- nrow(dataset)
+  train_size <- floor(train_ratio * n)
+  validation_size <- floor(validation_ratio * n)
+  test_size <- n - train_size - validation_size
+  
+  for (i in 1:((end_date - start_date)/period)) {
+    train <- shuffled_dataset[1:train_size, ]
+    validation <- shuffled_dataset[(train_size + 1):(train_size + validation_size), ]
+    test <- shuffled_dataset[(train_size + validation_size + 1):n, ]
+    
+    append(train_data, train)
+    append(validation_data, train)
+    append(test_data, test)
+  }
+  
+  return(list(train_data=train_data, validation_data=validation_data, test_data=test_data))
+  
+}
+
+time_period_fit <- function(start_data, end_date, period, train_data, validation_data, test_data) {
+  
+  r_squareds = c()
+  
+  for (i in 1:((end_date - start_date)/period)) {
+    train_data[i]
+    validataion_data[i]
+    test_data[i]
+    
+    # Your model logic 
+    
+
+  }
+  
+}
+
+# Start and end date as inputs
+# Output - train, validation and test on 70, 20, 10 split
+# Specify model with parameters
+# Evaluate on rsquared
