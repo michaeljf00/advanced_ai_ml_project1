@@ -119,4 +119,44 @@ plot(pls_model_loo, ncomp = 1, asp = 1, line = TRUE)
 explvar(pls_model_loo)
 
 
+time_period_fit <- function(dataset, start_date, end_date, train_size=0.9) {
+  
+  for (curr_year in year(start_date):year(end_date)) {
+    
+    # Get subset of dataset with data points from current year
+    subset = data_subset[year(data_subset$Date) == curr_year, ]
+    
+    n = nrow(subset)
+    train_size <- floor(train_ratio * n)
+    test_size <- 1 - train_size
+    
+    # Fit and test model on this data
+    train_data <- subset[1:train_size, ]
+    test_data <- subset[(train_size + 1):n, ]
+    
+    # Fit OLS/Random Forest model here
+    
+
+    
+    ### Code Below is for manual R_squared calculations
+    ### Total sum of squares
+    ##TSS <- sum((y_test - mean(y_test))^2)
+    ##
+    ### Residual sum of Squares
+    ##RSS <- sum((y_test - predictions)^2)
+    ##
+    ### Compute R-squared
+    ##R_squared <- 1 - (RSS / TSS)
+    ##
+    
+    # Record R_squared or current year
+    print(curr_year)
+    print(R_squared)
+    
+  }
+  
+}
+
+# Run time_period_fit here
+time_period_fit(data_subset, start_date, end_date)
 
