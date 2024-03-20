@@ -1,3 +1,4 @@
+rm(list=ls())
 library(dplyr)
 library(pls)
 library(caret)
@@ -66,28 +67,28 @@ top_bottom_split <- function(dataset, train_ratio=0.7, validation_ratio=0.2, tes
   dataset_name <- deparse(substitute(dataset))
   
   # Shuffle dataset
-  shuffled_dataset <- dataset[sample(nrow(dataset)), ]
+  # dataset <- dataset[sample(nrow(dataset)), ]
   
   # Compute sizes of train, validation, and test sets
-  n <- nrow(shuffled_dataset)
+  n <- nrow(dataset)
   train_size <- floor(train_ratio * n)
   validation_size <- floor(validation_ratio * n)
   test_size <- n - train_size - validation_size
   
   # Split dataset
-  train_data <- shuffled_dataset[1:train_size, ]
+  train_data <- dataset[1:train_size, ]
   write.csv(train_data, file = paste0(dataset_name, "_train.csv"), row.names = FALSE)
   #X_train <- as.matrix(train_data[, -which(names(train_data) %in% c("return"))])
   #X_train <- apply(X_train, 2, as.numeric)
   #y_train <- train_data$return
   
-  validation_data <- shuffled_dataset[(train_size + 1):(train_size + validation_size), ]
+  validation_data <- dataset[(train_size + 1):(train_size + validation_size), ]
   write.csv(validation_data, file = paste0(dataset_name, "_validation.csv"), row.names = FALSE)
   #X_val <- as.matrix(validation_data[, -which(names(validation_data) %in% c("return"))])
   #X_val <- apply(X_val, 2, as.numeric)
   #y_val <- validation_data$return
   
-  test_data <- shuffled_dataset[(train_size + validation_size + 1):n, ]
+  test_data <- dataset[(train_size + validation_size + 1):n, ]
   write.csv(test_data, file = paste0(dataset_name, "_test.csv"), row.names = FALSE)
   #X_test <- as.matrix(test_data[, -which(names(test_data) %in% c("return"))])
   #X_test <- apply(X_test, 2, as.numeric)
@@ -102,6 +103,7 @@ top_1000_data$train_data
 top_1000_data$validation_data
 top_1000_data$test_data
 
+
 trControl <- trainControl(method = "cv",
                           number = 5, 
                           allowParallel = TRUE,
@@ -109,19 +111,27 @@ trControl <- trainControl(method = "cv",
 tuneGrid <- expand.grid(
   .mtry = 2:6,
   .splitrule = c("variance"),
-  .min.node.size = c(1, 5, 10)
+  .min.node.size = 5
 )
 rf_model <- train(return ~ .,
                   data = top_1000_data$train_data,
                   method = "ranger",
                   trControl = trControl,
                   tuneGrid = tuneGrid)
+# Predicting on the test data
+predicted_values <- predict(rf_model, newdata = top_1000_data$test_data)
 
+# Actual values from the test data
+actual_values <- top_1000_data$test_data$return
 
-mae <- mean(abs(y_test - predictions))
-print(paste("MAE:", mae))
-R_squared <- 1 - sum((y_test - predictions)^2) / sum((y_test - mean(y_test))^2)
-print(paste("R-squared:", R_squared))
+# Calculating R-squared
+ss_res <- sum((actual_values - predicted_values)^2)
+ss_tot <- sum((actual_values - mean(actual_values))^2)
+r_squared <- 1 - (ss_res / ss_tot)
+
+# Displaying the R-squared value
+r_squared
+
 bot_1000_data <- top_bottom_split(data_ch_bot)
 bot_1000_data$train_data
 bot_1000_data$validation_data
@@ -131,16 +141,19 @@ trControl <- trainControl(method = "cv",
                           number = 5, 
                           allowParallel = TRUE,
                           verboseIter = TRUE)
-
-tuneGrid <- expand.grid(.mtry = 1:6)
+tuneGrid <- expand.grid(
+  .mtry = 2:6,
+  .splitrule = c("variance"),
+  .min.node.size = 5
+)
 rf_model2 <- train(return ~ .,
                    data = bot_1000_data$train_data,
-                   method = "rf",
+                   method = "ranger",
                    trControl = trControl,
                    tuneGrid = tuneGrid)
 
 rf_model3 <- train(return ~ .,
                    data = train_data,
-                   method = "rf",
+                   method = "ranger",
                    trControl = trControl,
                    tuneGrid = tuneGrid)
