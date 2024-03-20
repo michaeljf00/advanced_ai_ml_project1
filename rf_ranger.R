@@ -195,3 +195,15 @@ rf_model3 <- train(return ~ .,
                    method = "ranger",
                    trControl = trControl,
                    tuneGrid = tuneGrid)
+predicted_values_whole <- predict(rf_model3, newdata = test_data)
+
+# Actual values from the test data
+actual_values_whole <-test_data$return
+
+# Calculating R-squared
+ss_res_whole <- sum((actual_values_whole - predicted_values_whole)^2)
+ss_tot_whole <- sum((actual_values_whole - mean(actual_values_whole))^2)
+r_squared_whole <- 1 - (ss_res_whole / ss_tot_whole)
+
+# Displaying the R-squared value
+r_squared_whole
