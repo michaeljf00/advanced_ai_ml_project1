@@ -201,7 +201,7 @@ time_period_split <- function(dataset, start_date, end_date, period, train_ratio
   validation_size <- floor(validation_ratio * n)
   test_size <- n - train_size - validation_size
   
-  for (i in 1:((end_date - start_date)/period)) {
+  for (i in 1:((year(end_date) - year(start_date))/period)) {
     train <- shuffled_dataset[1:train_size, ]
     validation <- shuffled_dataset[(train_size + 1):(train_size + validation_size), ]
     test <- shuffled_dataset[(train_size + validation_size + 1):n, ]
