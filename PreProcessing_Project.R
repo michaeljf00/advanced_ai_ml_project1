@@ -4,14 +4,17 @@ library(pls)
 
 
 setwd("/Volumes/GoogleDrive/My Drive/RPI 2022-2026/5. Spring 2024/Adv AI ML Clarke/Project 1")
-stock_data = read.csv("Factors and Stock returns.csv")
+stock_data <- read.csv("Factors and Stock returns.csv")  
+
+# Convert 'Date' column to Date format
+stock_data$Date <- as.Date(stock_data$Date)
 
 ## Sub-setting the Data Frame to be between 2009 and 2019 
 start_date = as.Date("2009-01-31")
 end_date = as.Date("2019-12-31")
 data_subset = stock_data[stock_data$Date >=start_date  & stock_data$Date <=end_date, ]
 
-## Dropping all NA values 
+sum(is.na(data_subset))
 data_subset = na.omit(data_subset)
 
 ## Winsorizing the data leaving out Date and permno columns 
@@ -28,6 +31,22 @@ for (col in names(data_subset)[numeric_cols]) {
   }
 }
 
+data_ch_top <- data_subset %>% 
+  arrange(desc(mvel1)) %>%
+  group_by(Date) %>%
+  slice_head(n = 1000) %>%
+  ungroup() %>%
+  select(-Date)
+
+# Sort data by 'mvel1' in descending order, group by 'DATE',
+# select bottom 1000 rows for each group, and reset index
+data_ch_bot <- data_subset %>% 
+  arrange(desc(mvel1)) %>%
+  group_by(Date) %>%
+  slice_tail(n = 1000) %>%
+  ungroup() %>%
+  select(-Date)
+
 set.seed(123)
 
 ## Sample Data-set with 1000 Unique permnos 
@@ -37,7 +56,6 @@ sampled_data = data_subset[data_subset$permno %in% sampled_permnos, ]
 
 ## Output Sampled Data as a CSV
 write.csv(sampled_data, file = "1000_unique_stocks.csv", row.names = FALSE)
-
 
 ## Time Based Train-Validation-Test split 
 sampled_data$Date = as.Date(sampled_data$Date)
@@ -101,4 +119,44 @@ plot(pls_model_loo, ncomp = 1, asp = 1, line = TRUE)
 explvar(pls_model_loo)
 
 
+time_period_fit <- function(dataset, start_date, end_date, train_size=0.9) {
+  
+  for (curr_year in year(start_date):year(end_date)) {
+    
+    # Get subset of dataset with data points from current year
+    subset = data_subset[year(data_subset$Date) == curr_year, ]
+    
+    n = nrow(subset)
+    train_size <- floor(train_ratio * n)
+    test_size <- 1 - train_size
+    
+    # Fit and test model on this data
+    train_data <- subset[1:train_size, ]
+    test_data <- subset[(train_size + 1):n, ]
+    
+    # Fit OLS/Random Forest model here
+    
+
+    
+    ### Code Below is for manual R_squared calculations
+    ### Total sum of squares
+    ##TSS <- sum((y_test - mean(y_test))^2)
+    ##
+    ### Residual sum of Squares
+    ##RSS <- sum((y_test - predictions)^2)
+    ##
+    ### Compute R-squared
+    ##R_squared <- 1 - (RSS / TSS)
+    ##
+    
+    # Record R_squared or current year
+    print(curr_year)
+    print(R_squared)
+    
+  }
+  
+}
+
+# Run time_period_fit here
+time_period_fit(data_subset, start_date, end_date)
 
