@@ -128,7 +128,6 @@ time_period_fit <- function(dataset, start_date, end_date, train_size=0.9) {
     
     n = nrow(subset)
     train_size <- floor(train_ratio * n)
-    test_size <- 1 - train_size
     
     # Fit and test model on this data
     train_data <- subset[1:train_size, ]
