@@ -105,7 +105,7 @@ top_1000_data$test_data
 
 
 trControl <- trainControl(method = "cv",
-                          number = 3, 
+                          number = 5, 
                           allowParallel = TRUE,
                           verboseIter = TRUE)
 tuneGrid <- expand.grid(
@@ -207,3 +207,110 @@ r_squared_whole <- 1 - (ss_res_whole / ss_tot_whole)
 
 # Displaying the R-squared value
 r_squared_whole
+
+library(lubridate)
+time_period_fit <- function(dataset, start_date, end_date, train_ratio=0.9) {
+  
+  for (curr_year in year(start_date):year(end_date)) {
+    
+    # Get subset of dataset with data points from current year
+    subset = data_subset[year(data_subset$Date) == curr_year, ]
+    
+    n = nrow(subset)
+    train_size <- floor(train_ratio * n)
+    
+    # Fit and test model on this data
+    train_data <- subset[1:train_size, ]
+    test_data <- subset[(train_size + 1):n, ]
+    
+    # Fit OLS/Random Forest model here
+    rf_model_split <- train(return ~ .,
+                       data = train_data,
+                       method = "ranger",
+                       trControl = trControl,
+                       tuneGrid = tuneGrid)
+    predicted_values <- predict(rf_model_split, newdata = test_data)
+    
+    # Actual values from the test data
+    actual_values <- test_data$return
+    
+    # Calculating R-squared
+    ss_res <- sum((actual_values - predicted_values)^2)
+    ss_tot <- sum((actual_values - mean(actual_values))^2)
+    r_squared <- 1 - (ss_res / ss_tot)
+    
+    # Displaying the R-squared value
+    
+    ### Code Below is for manual R_squared calculations
+    ### Total sum of squares
+    ##TSS <- sum((y_test - mean(y_test))^2)
+    ##
+    ### Residual sum of Squares
+    ##RSS <- sum((y_test - predictions)^2)
+    ##
+    ### Compute R-squared
+    ##R_squared <- 1 - (RSS / TSS)
+    ##
+    
+    # Record R_squared or current year
+    print(curr_year)
+    print(r_squared)
+    
+  }
+  
+}
+
+# Run time_period_fit here
+time_period_fit(data_subset, start_date, end_date)
+
+saveRDS(rf_model, file = "rf_model.rds")
+saveRDS(rf_model2, file = "rf_model2.rds")
+saveRDS(rf_model3, file = "rf_model3.rds")
+# ============================================================================================
+train_and_evaluate <- function(train_data, validation_data, test_data) {
+  trControl <- trainControl(method = "cv",
+                            number = 3, 
+                            allowParallel = TRUE,
+                            verboseIter = TRUE)
+  tuneGrid <- expand.grid(
+    mtry = 1:6,
+    splitrule = c("variance"),
+    min.node.size = c(1,10,100)
+  )
+  
+  model <- train(return ~ ., data = train_data, method = "ranger", trControl = trControl, tuneGrid = tuneGrid)
+  print(paste("Best mtry:", model$bestTune$mtry))
+  print(paste("Best splitrule:", model$bestTune$splitrule))
+  validation_predictions <- predict(model, newdata = validation_data)
+  validation_actuals <- validation_data$return
+  validation_ss_res <- sum((validation_actuals - validation_predictions)^2)
+  validation_ss_tot <- sum((validation_actuals - mean(validation_actuals))^2)
+  validation_r_squared <- 1 - (validation_ss_res / validation_ss_tot)
+  combined_data <- rbind(train_data, validation_data)
+  final_model <- train(return ~ ., data = combined_data, method = "ranger", trControl = trControl, tuneGrid = data.frame(mtry = model$bestTune$mtry, splitrule = model$bestTune$splitrule, min.node.size = model$bestTune$min.node.size))
+  test_predictions <- predict(final_model, newdata = test_data)
+  test_actuals <- test_data$return
+  test_ss_res <- sum((test_actuals - test_predictions)^2)
+  test_ss_tot <- sum((test_actuals - mean(test_actuals))^2)
+  test_r_squared <- 1 - (test_ss_res / test_ss_tot)
+  list(
+    model = final_model,
+    validation_r_squared = validation_r_squared,
+    test_r_squared = test_r_squared
+  )
+}
+results_top <- train_and_evaluate(top_1000_data$train_data, top_1000_data$validation_data, top_1000_data$test_data)
+results_bot <- train_and_evaluate(bot_1000_data$train_data, bot_1000_data$validation_data, bot_1000_data$test_data)
+results_all <- train_and_evaluate(train_data, validation_data, test_data)
+cat("Top 1000 Stocks Validation R-squared:", results_top$validation_r_squared, "\n")
+cat("Top 1000 Stocks Test R-squared:", results_top$test_r_squared, "\n")
+cat("Bottom 1000 Stocks Validation R-squared:", results_bot$validation_r_squared, "\n")
+cat("Bottom 1000 Stocks Test R-squared:", results_bot$test_r_squared, "\n")
+cat("All 1000 Stocks Validation R-squared:", results_all$validation_r_squared, "\n")
+cat("All 1000 Stocks Test R-squared:", results_all$test_r_squared, "\n")
+# Top 1000 Stocks Validation R-squared: -0.01339317 
+# Top 1000 Stocks Test R-squared: 0.01454941 
+# Bottom 1000 Stocks Validation R-squared: -0.004824673 
+# Bottom 1000 Stocks Test R-squared: 0.01111166 
+# All 1000 Stocks Validation R-squared: -0.06944591 
+# All 1000 Stocks Test R-squared: -1.114231 
