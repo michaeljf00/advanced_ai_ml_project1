@@ -5,7 +5,7 @@ library(keras)
 library(caret)
 
 # Read the data
-stock_data <- read.csv("factors_and_stock_returns.csv")  
+stock_data <- read.csv("Factors and Stock Returns.csv")  
 
 # Convert 'Date' column to Date format
 stock_data$Date <- as.Date(stock_data$Date)

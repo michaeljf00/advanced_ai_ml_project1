@@ -1,9 +1,10 @@
 ## Loading Relevant Libraries
 library(dplyr)
-library(pls)
+library(data.table)
+library(caret)
+library(MASS)
 
-
-setwd("/Volumes/GoogleDrive/My Drive/RPI 2022-2026/5. Spring 2024/Adv AI ML Clarke/Project 1")
+setwd("/Users/michaeljoshua/Desktop/programming_projects/advanced_ai_ml_project1")
 stock_data <- read.csv("Factors and Stock returns.csv")  
 
 # Convert 'Date' column to Date format
@@ -119,43 +120,76 @@ plot(pls_model_loo, ncomp = 1, asp = 1, line = TRUE)
 explvar(pls_model_loo)
 
 
-time_period_fit <- function(dataset, start_date, end_date, train_size=0.9) {
+time_period_fit <- function(dataset, start_date, end_date, train_ratio=0.7, validation_ratio=0.2, test_ratio=0.1) {
   
   for (curr_year in year(start_date):year(end_date)) {
     
     # Get subset of dataset with data points from current year
-    subset = data_subset[year(data_subset$Date) == curr_year, ]
+    subset <- dataset[year(dataset$Date) == curr_year, ]
     
-    n = nrow(subset)
+    # Remove the Date column
+    subset <- subset[, !(names(subset) %in% c("Date"))]
+    
+    n <- nrow(subset)
+    
+    # Calculate sizes for train, validation, and test sets
     train_size <- floor(train_ratio * n)
-
-    # Fit and test model on this data
+    validation_size <- floor(validation_ratio * n)
+    test_size <- n - train_size - validation_size
+    
+    # Perform train-validation-test split for the current year
     train_data <- subset[1:train_size, ]
-    test_data <- subset[(train_size + 1):n, ]
+    validation_data <- subset[(train_size + 1):(train_size + validation_size), ]
+    test_data <- subset[(train_size + validation_size + 1):n, ]
     
-    # Fit OLS/Random Forest model here
+    # Fit OLS model without Huber loss
+    ols_model <- lm(return ~ . - permno, data = train_data)
     
-
+    # Fit OLS model with Huber loss
+    ols_huber_model <- rlm(return ~ . - permno, data = train_data, psi = psi.huber)
     
-    ### Code Below is for manual R_squared calculations
-    ### Total sum of squares
-    ##TSS <- sum((y_test - mean(y_test))^2)
-    ##
-    ### Residual sum of Squares
-    ##RSS <- sum((y_test - predictions)^2)
-    ##
-    ### Compute R-squared
-    ##R_squared <- 1 - (RSS / TSS)
-    ##
+    # Make predictions on validation set using OLS without Huber loss
+    validation_data$predicted_returns_ols <- predict(ols_model, newdata = validation_data)
     
-    # Record R_squared or current year
-    print(curr_year)
-    print(R_squared)
+    # Make predictions on validation set using OLS with Huber loss
+    validation_data$predicted_returns_ols_huber <- predict(ols_huber_model, newdata = validation_data)
+    
+    # Compute R-squared for validation set using OLS without Huber loss
+    RSS <- sum((validation_data$return - validation_data$predicted_returns_ols)^2)
+    TSS <- sum((validation_data$return - mean(validation_data$return))^2)
+    R_squared_ols <- 1 - (RSS / TSS)
+    
+    # Compute R-squared for validation set using OLS with Huber loss
+    RSS <- sum((validation_data$return - validation_data$predicted_returns_ols_huber)^2)
+    TSS <- sum((validation_data$return - mean(validation_data$return))^2)
+    R_squared_ols_huber <- 1 - (RSS / TSS)
+    
+    # Make predictions on test set using OLS without Huber loss
+    test_data$predicted_returns_ols <- predict(ols_model, newdata = test_data)
+    
+    # Make predictions on test set using OLS with Huber loss
+    test_data$predicted_returns_ols_huber <- predict(ols_huber_model, newdata = test_data)
+    
+    # Compute R-squared for test set using OLS without Huber loss
+    RSS <- sum((test_data$return - test_data$predicted_returns_ols)^2)
+    TSS <- sum((test_data$return - mean(test_data$return))^2)
+    R_squared_ols <- 1 - (RSS / TSS)
+    
+    # Compute R-squared for test set using OLS with Huber loss
+    RSS <- sum((test_data$return - test_data$predicted_returns_ols_huber)^2)
+    TSS <- sum((test_data$return - mean(test_data$return))^2)
+    R_squared_ols_huber <- 1 - (RSS / TSS)
+    
+    # Print R-squared for test set for both OLS and OLS with Huber loss
+    print(paste("Year:", curr_year, "- Test R-squared (OLS without Huber):", R_squared_ols))
+    print(paste("Year:", curr_year, "- Test R-squared (OLS with Huber):", R_squared_ols_huber))
     
   }
   
 }
 
-# Run time_period_fit here
-time_period_fit(data_subset, start_date, end_date)
+# Run time_period_fit
+time_period_fit(sampled_data, start_date, end_date, train_ratio = 0.7, validation_ratio = 0.2, test_ratio = 0.1)
+
+
 
