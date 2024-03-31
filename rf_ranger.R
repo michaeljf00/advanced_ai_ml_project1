@@ -269,18 +269,20 @@ saveRDS(rf_model3, file = "rf_model3.rds")
 # ============================================================================================
 train_and_evaluate <- function(train_data, validation_data, test_data) {
   trControl <- trainControl(method = "cv",
-                            number = 3, 
+                            number = 5, 
                             allowParallel = TRUE,
                             verboseIter = TRUE)
   tuneGrid <- expand.grid(
-    mtry = 1:6,
+    mtry = 2:6,
     splitrule = c("variance"),
     min.node.size = c(1,10,100)
   )
   
-  model <- train(return ~ ., data = train_data, method = "ranger", trControl = trControl, tuneGrid = tuneGrid)
+  model <- train(return ~ ., data = train_data, method = "ranger",  importance = 'impurity', trControl = trControl, tuneGrid = tuneGrid)
   print(paste("Best mtry:", model$bestTune$mtry))
   print(paste("Best splitrule:", model$bestTune$splitrule))
+  var_importance <- varImp(model)
+  print(var_importance)
   validation_predictions <- predict(model, newdata = validation_data)
   validation_actuals <- validation_data$return
   validation_ss_res <- sum((validation_actuals - validation_predictions)^2)
@@ -296,10 +298,13 @@ train_and_evaluate <- function(train_data, validation_data, test_data) {
   list(
     model = final_model,
     validation_r_squared = validation_r_squared,
-    test_r_squared = test_r_squared
+    test_r_squared = test_r_squared,
+    variable_importance = var_importance
   )
 }
 results_top <- train_and_evaluate(top_1000_data$train_data, top_1000_data$validation_data, top_1000_data$test_data)
+importance_data <- results_top$variable_importance$importance
+top_features <- rownames(head(importance_data, 10))
 results_bot <- train_and_evaluate(bot_1000_data$train_data, bot_1000_data$validation_data, bot_1000_data$test_data)
 results_all <- train_and_evaluate(train_data, validation_data, test_data)
 cat("Top 1000 Stocks Validation R-squared:", results_top$validation_r_squared, "\n")
@@ -314,3 +319,54 @@ cat("All 1000 Stocks Test R-squared:", results_all$test_r_squared, "\n")
 # Bottom 1000 Stocks Test R-squared: 0.01111166 
 # All 1000 Stocks Validation R-squared: -0.06944591 
 # All 1000 Stocks Test R-squared: -1.114231 
+
+library(lubridate)
+time_period_fit <- function(dataset, start_date, end_date, train_ratio=0.7, validation_ratio=0.2) {
+  print("Year,Train Ratio,Validation Ratio,R-Squared")
+  for (curr_year in year(start_date):year(end_date)) {
+    
+    # Get subset of dataset with data points from current year
+    subset = dataset[year(dataset$Date) == curr_year, ]
+    
+    n = nrow(subset)
+    train_size <- floor(train_ratio * n)
+    validation_size <- floor(validation_ratio * n)
+    
+    # Split the data into training, validation, and testing
+    train_data <- subset[1:train_size, ]
+    validation_data <- subset[(train_size + 1):(train_size + validation_size), ]
+    test_data <- subset[(train_size + validation_size + 1):n, ]
+    
+    # Fit OLS/Random Forest model here with tuning on validation set
+    trControl <- trainControl(method = "cv",
+                              number = 5, 
+                              allowParallel = TRUE,
+                              verboseIter = TRUE)
+    tuneGrid <- expand.grid(mtry = 2:6, splitrule = c("variance"), min.node.size = c(1,10,100)
+    
+    rf_model_split <- train(return ~ .,
+                            data = train_data,
+                            method = "ranger",
+                            trControl = trControl,
+                            tuneGrid = tuneGrid)
+    
+    # Model tuning and evaluation
+    validation_predictions <- predict(rf_model_split, newdata = validation_data)
+    validation_actuals <- validation_data$return
+    
+    # Best model testing on test data
+    test_predictions <- predict(rf_model_split, newdata = test_data)
+    actual_values <- test_data$return
+    
+    # Calculating R-squared for test data
+    ss_res <- sum((actual_values - test_predictions)^2)
+    ss_tot <- sum((actual_values - mean(actual_values))^2)
+    r_squared <- 1 - (ss_res / ss_tot)
+    
+    # Print the R-squared for current year
+    print(sprintf("%d,%f,%f,%f", curr_year, train_ratio, validation_ratio, r_squared))
+  }
+}
+
+# Example usage of the function
+time_period_fit(data_subset, as.Date("2009-01-01"), as.Date("2019-12-31"))
