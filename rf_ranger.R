@@ -266,7 +266,9 @@ time_period_fit(data_subset, start_date, end_date)
 saveRDS(rf_model, file = "rf_model.rds")
 saveRDS(rf_model2, file = "rf_model2.rds")
 saveRDS(rf_model3, file = "rf_model3.rds")
-# ============================================================================================
+#==============================================================================================
+# update
+# =============================================================================================
 train_and_evaluate <- function(train_data, validation_data, test_data) {
   trControl <- trainControl(method = "cv",
                             number = 5, 
@@ -293,7 +295,7 @@ train_and_evaluate <- function(train_data, validation_data, test_data) {
   test_predictions <- predict(final_model, newdata = test_data)
   test_actuals <- test_data$return
   test_ss_res <- sum((test_actuals - test_predictions)^2)
-  test_ss_tot <- sum((test_actuals - mean(test_actuals))^2)
+  test_ss_tot <- sum((test_actuals - test_actuals)^2)
   test_r_squared <- 1 - (test_ss_res / test_ss_tot)
   list(
     model = final_model,
@@ -349,18 +351,14 @@ time_period_fit <- function(dataset, start_date, end_date, train_ratio=0.7, vali
                             method = "ranger",
                             trControl = trControl,
                             tuneGrid = tuneGrid)
-    
-    # Model tuning and evaluation
+
     validation_predictions <- predict(rf_model_split, newdata = validation_data)
     validation_actuals <- validation_data$return
-    
-    # Best model testing on test data
     test_predictions <- predict(rf_model_split, newdata = test_data)
     actual_values <- test_data$return
-    
     # Calculating R-squared for test data
     ss_res <- sum((actual_values - test_predictions)^2)
-    ss_tot <- sum((actual_values - mean(actual_values))^2)
+    ss_tot <- sum((actual_values - actual_values)^2)
     r_squared <- 1 - (ss_res / ss_tot)
     
     # Print the R-squared for current year
