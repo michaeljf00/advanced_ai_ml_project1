@@ -296,7 +296,7 @@ train_and_evaluate <- function(train_data, validation_data, test_data) {
   test_actuals <- test_data$return
   test_ss_res <- sum((test_actuals - test_predictions)^2)
   test_ss_tot <- sum((test_actuals - test_actuals)^2)
-  test_r_squared <- 1 - (test_ss_res / test_ss_tot)
+  test_r_squared <-  1 - sum((test_data$return - test_predictions)^2) / sum((test_data$return))
   list(
     model = final_model,
     validation_r_squared = validation_r_squared,
@@ -359,7 +359,7 @@ time_period_fit <- function(dataset, start_date, end_date, train_ratio=0.7, vali
     # Calculating R-squared for test data
     ss_res <- sum((actual_values - test_predictions)^2)
     ss_tot <- sum((actual_values - actual_values)^2)
-    r_squared <- 1 - (ss_res / ss_tot)
+    r_squared <-  1 - sum((test_data$return - test_predictions)^2) / sum((test_data$return))
     
     # Print the R-squared for current year
     print(sprintf("%d,%f,%f,%f", curr_year, train_ratio, validation_ratio, r_squared))
