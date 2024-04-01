@@ -188,7 +188,7 @@ R_huber_bot
 ##----------------------------------------------------------------------------------------------------
 ## Model R-Squared Performance for 5 splits in a 10-Year Time Period OLS and OLS With Huber Loss
 
-time_period_fit <- function(dataset, start_date, end_date, train_ratio=0.7, validation_ratio=0.2, test_ratio=0.1) {
+time_period_fit <- function(dataset, start_date, end_date, train_ratio=0.9, test_ratio=0.1) {
   
   for (curr_year in year(start_date):year(end_date)) {
     
@@ -202,35 +202,17 @@ time_period_fit <- function(dataset, start_date, end_date, train_ratio=0.7, vali
     
     # Calculate sizes for train, validation, and test sets
     train_size <- floor(train_ratio * n)
-    validation_size <- floor(validation_ratio * n)
-    test_size <- n - train_size - validation_size
+    test_size <- n - train_size
     
     # Perform train-validation-test split for the current year
     train_data <- subset[1:train_size, ]
-    validation_data <- subset[(train_size + 1):(train_size + validation_size), ]
-    test_data <- subset[(train_size + validation_size + 1):n, ]
+    test_data <- subset[(train_size + 1):n, ]
     
     # Fit OLS model without Huber loss
     ols_model <- lm(return ~ . - permno, data = train_data)
     
     # Fit OLS model with Huber loss
     ols_huber_model <- rlm(return ~ . - permno, data = train_data, psi = psi.huber)
-    
-    # Make predictions on validation set using OLS without Huber loss
-    validation_data$predicted_returns_ols <- predict(ols_model, newdata = validation_data)
-    
-    # Make predictions on validation set using OLS with Huber loss
-    validation_data$predicted_returns_ols_huber <- predict(ols_huber_model, newdata = validation_data)
-    
-    # Compute R-squared for validation set using OLS without Huber loss
-    RSS <- sum((validation_data$return - validation_data$predicted_returns_ols)^2)
-    TSS <- sum((validation_data$return))
-    R_squared_ols <- 1 - (RSS / TSS)
-    
-    # Compute R-squared for validation set using OLS with Huber loss
-    RSS <- sum((validation_data$return - validation_data$predicted_returns_ols_huber)^2)
-    TSS <- sum((validation_data$return))
-    R_squared_ols_huber <- 1 - (RSS / TSS)
     
     # Make predictions on test set using OLS without Huber loss
     test_data$predicted_returns_ols <- predict(ols_model, newdata = test_data)
@@ -257,7 +239,7 @@ time_period_fit <- function(dataset, start_date, end_date, train_ratio=0.7, vali
 }
 
 # Run time_period_fit
-time_period_fit(data_subset, start_date, end_date, train_ratio = 0.7, validation_ratio = 0.2, test_ratio = 0.1)
+time_period_fit(data_subset, start_date, end_date, train_ratio = 0.9, test_ratio = 0.1)
 
 
 
