@@ -4,6 +4,8 @@ library(tensorflow)
 library(keras)
 library(caret)
 
+setwd("/Users/michaeljoshua/Desktop/programming_projects/advanced_ai_ml_project1")
+
 # Read the data
 stock_data <- read.csv("Factors and Stock Returns.csv")  
 
@@ -37,15 +39,13 @@ top_1000 <- data_subset %>%
   arrange(desc(mvel1)) %>%
   group_by(Date) %>%
   slice_head(n = 1000) %>%
-  ungroup() %>%
-  select(-Date)
+  ungroup() 
 
 bottom_1000 <- data_subset %>% 
   arrange(desc(mvel1)) %>%
   group_by(Date) %>%
   slice_tail(n = 1000) %>%
-  ungroup() %>%
-  select(-Date)
+  ungroup() 
 
 set.seed(123)
 
@@ -97,19 +97,19 @@ top_bottom_split <- function(dataset, train_ratio=0.7, validation_ratio=0.2, tes
   # Split dataset
   train_data <- dataset[1:train_size, ]
   write.csv(train_data, file = paste0(dataset_name, "_train.csv"), row.names = FALSE)
-  X_train <- as.matrix(train_data[, -which(names(train_data) %in% c("return"))])
+  X_train <- as.matrix(train_data[, -which(names(train_data) %in% c("Date", "return"))])
   X_train <- apply(X_train, 2, as.numeric)
   y_train <- train_data$return
   
   validation_data <- dataset[(train_size + 1):(train_size + validation_size), ]
   write.csv(validation_data, file = paste0(dataset_name, "_validation.csv"), row.names = FALSE)
-  X_val <- as.matrix(validation_data[, -which(names(validation_data) %in% c("return"))])
+  X_val <- as.matrix(validation_data[, -which(names(validation_data) %in% c("Date", "return"))])
   X_val <- apply(X_val, 2, as.numeric)
   y_val <- validation_data$return
   
   test_data <- dataset[(train_size + validation_size + 1):n, ]
   write.csv(test_data, file = paste0(dataset_name, "_test.csv"), row.names = FALSE)
-  X_test <- as.matrix(test_data[, -which(names(test_data) %in% c("return"))])
+  X_test <- as.matrix(test_data[, -which(names(test_data) %in% c("Date", "return"))])
   X_test <- apply(X_test, 2, as.numeric)
   y_test <- test_data$return
   
@@ -145,7 +145,7 @@ evaluate_model <- function(model, X_test, y_test) {
   predictions <- model %>% predict(X_test)
   
   # Total sum of squares
-  TSS <- sum((y_test - mean(y_test))^2)
+  TSS <- sum(y_test)
   
   # Residual sum of Squares
   RSS <- sum((y_test - predictions)^2)
@@ -168,8 +168,8 @@ evaluate_model <- function(model, X_test, y_test) {
 
 # Unique 1000 samples
 lstm_all_data <- train_test_split(data_subset)
-lstm_all <- lstm_fit(lstm_all_data$X_train, lstm_all_data$y_train, lstm_alll_data$X_val, lstm_alll_data$y_val)
-evaluate_model(lstm_all, lstm_all_data$X_test, slstm_all_data$y_test)
+lstm_all <- lstm_fit(lstm_all_data$X_train, lstm_all_data$y_train, lstm_all_data$X_val, lstm_all_data$y_val)
+evaluate_model(lstm_all, lstm_all_data$X_test, lstm_all_data$y_test)
 
 # Top 1000 samples
 top_1000_model_data <- top_bottom_split(top_1000)
@@ -236,7 +236,7 @@ time_period_fit <- function(dataset, start_date, end_date, train_ratio=0.7, vali
     predictions <- model %>% predict(X_test)
     
     # Total sum of squares
-    TSS <- sum((y_test - mean(y_test))^2)
+    TSS <- sum(y_test)
     
     # Residual sum of Squares
     RSS <- sum((y_test - predictions)^2)
