@@ -10,7 +10,7 @@ names(stock_data)[names(stock_data) == "permno"] <- "PERMNO"
 merged_data <- merge(stock_data, indus_data, by = "PERMNO", all.x = TRUE)
 merged_data$SICCD <- as.character(merged_data$SICCD)
 specific_siccd_data <- merged_data %>% 
-  filter(substr(SICCD, 1, 2) == "60") %>%
+  filter(substr(SICCD, 1, 2) == "35") %>%
   select(-SICCD, -NCUSIP, -TICKER, -COMNAM)
 data_subset = na.omit(specific_siccd_data)
 data_subset$Date = as.Date(data_subset$Date)
@@ -97,3 +97,129 @@ correlation_matrix <- cor(selected_data, use="complete.obs")  # 'use' argument h
 corrplot(correlation_matrix, method = "circle", type = "upper", order = "hclust", 
          tl.col = "black", tl.srt = 45, addCoef.col = "black")
 print(correlation_matrix)
+
+X <- train_data
+model.inclass <- Predictor$new(model, data = X, class = "1")
+
+get.lemon <- function(k=20,obs){
+  x.interest <- X[obs, ]
+  lemon <- LocalModel$new(model.inclass, 
+                          x.interest = x.interest, 
+                          k = k)
+  return(lemon$results)
+}
+
+Q <- 5 # quintiles
+qq = quantile(X$dolvol, probs = seq(0, 1, 1/Q))
+
+# bins has the row numbers of the quantiles:
+bins <- list(NA)
+for (i in 1:Q){
+  bins[[i]] <- which(X$dolvol >= qq[i] & X$dolvol < qq[i+1])
+  
+  # Print the min/mean/max of the bin values to make sure it worked:
+  print(paste(min(X$dolvol[bins[[i]]]),
+              round(mean(X$dolvol[bins[[i]]])),
+              max(X$dolvol[bins[[i]]]),sep=","))
+}
+
+# Sample each bin and save the results:
+set.seed(100)
+k <- 20 # Number of Features
+# The nuber of instances per bin:
+N <- 10 
+
+# Draw the random samples:
+sample.rows <- as.data.frame(matrix(NA,ncol=Q,nrow=N))
+for (i in 1:Q){
+  sample.rows[,i] <- sample(bins[[i]],N,replace=F)
+}
+
+for (q in 1:Q){
+  for (i in 1:N){
+    tmp <- get.lemon(k=k,obs=sample.rows[i,q])
+    tmp$Q <- q
+    tmp$obs <- i
+    print(tmp$feature)
+    if (q == 1 & i == 1){
+      lemon.results <- tmp
+    }
+    else{
+      lemon.results <- rbind(lemon.results,tmp)
+    }
+  }
+}
+
+
+if (!file.exists("lemon_explanations_35")) {
+  dir.create("lemon_explanations_35")
+}
+
+unique_features <- unique(lemon.results$feature)
+unique_features
+for (i in 1:length(unique_features)){
+  print(i)
+  
+  pdf_name <- paste0("lemon_explanations_35/explanation_", unique_features[i], ".pdf")
+  pdf(pdf_name)
+  
+  df.cscore <- lemon.results[which(lemon.results$feature == unique_features[i]),]
+  df.cscore$Q <- as.factor(df.cscore$Q)
+  
+  p.cscore <- ggplot(data=df.cscore,aes(x=obs,y=effect,colour=Q)) +
+    geom_point() +
+    scale_colour_manual(name="Q",values = c("red", "orange", "blue", "green","black"))
+  
+  print(p.cscore)
+  
+  p.cscore.Q <- ggplot(data=df.cscore,aes(x=Q,y=effect,colour=Q)) +
+    geom_point() +
+    scale_colour_manual(name="Q",values = c("red", "orange", "blue", "green","black"))
+  
+  print(p.cscore.Q)
+  
+  dev.off()
+}
+
+length(lemon.results)
+lemon.results
+y <- as.numeric(train_data$return)
+pred_wrapper <- function(object, newdata) {
+  p <- predict.train(object, data = newdata)
+}
+
+
+# 2. generate a predictor conatiner to hold the model info:
+predictor <- Predictor$new(model.inclass$model,
+                           data=X,y=y,
+                           predict.function = pred_wrapper)
+model.inclass$model
+
+# Get the shapley values for a single instance:
+shapley_100 <- Shapley$new(predictor, x.interest = X[100,])
+
+get.lshapley <- function(k=2,obs){
+  x.interest <- X[obs, ]
+  shapley <- LocalModel$new(model.inclass, 
+                            x.interest = x.interest, 
+                            k = k)
+  return(lemon$results)
+}
+
+if (!file.exists("shapley_plots_35")) {
+  dir.create("shapley_plots_35")
+}
+
+# Shapley values for number of instances for each bin 
+for (q in 1:Q){
+  for (i in 1:N){
+    tmp <- Shapley$new(predictor, x.interest = X[sample.rows[i, q],])
+    pdf_name <- paste0("shapley_plots_35/shapley_plot_Q:", q, "_i:", i, ".pdf")
+    pdf(pdf_name)
+    
+    # Generate and save Shapley plot for specific Q value and index
+    print(tmp$plot())  # Replace with your actual code for generating the Shapley plot
+    
+    dev.off()
+  }
+}
