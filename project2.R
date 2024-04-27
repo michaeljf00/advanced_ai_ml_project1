@@ -4,19 +4,20 @@ library(pls)
 library(caret)
 library(ranger)
 
+setwd("/Users/michaeljoshua/Desktop/programming_projects/advanced_ai_ml_project1")
 stock_data = read.csv("Factors and Stock returns.csv")
 indus_data = read.csv("Companies.csv")
 names(stock_data)[names(stock_data) == "permno"] <- "PERMNO"
 merged_data <- merge(stock_data, indus_data, by = "PERMNO", all.x = TRUE)
 merged_data$SICCD <- as.character(merged_data$SICCD)
+industry <- 35
 specific_siccd_data <- merged_data %>% 
-  filter(substr(SICCD, 1, 2) == "35") %>%
+  filter(substr(SICCD, 1, 2) == industry) %>%
   select(-SICCD, -NCUSIP, -TICKER, -COMNAM)
 data_subset = na.omit(specific_siccd_data)
 data_subset$Date = as.Date(data_subset$Date)
 train_end_date = as.Date("2017-12-31")
 validation_end_date = as.Date("2018-12-31")
-
 train_data = subset(data_subset, Date <= train_end_date)
 validation_data = subset(data_subset, Date > train_end_date & Date <= validation_end_date)
 test_data = subset(data_subset, Date > validation_end_date)
@@ -66,7 +67,7 @@ importance_data <- results_top$variable_importance$importance
 top_features <- rownames(head(importance_data, 10))
 
 model <- results_top$model
-train_data$Date <- as.numeric(train_data$Date)
+
 features_of_interest <- c('mom1m', 'mom12m','chmom', 'indmom', 'mom36m', 'turn', 'mvel1', 'dolvol', 'ill', 'zerotrade','baspread', 'retvol', 'idiovol','beta','betasq','ep','sp','agr','nincr','return..t.1.')
 library(iml)
 predictor <- Predictor$new(model, data = train_data, y = train_data$return)
@@ -151,35 +152,56 @@ for (q in 1:Q){
 }
 
 
-if (!file.exists("lemon_explanations_35")) {
-  dir.create("lemon_explanations_35")
+if (!file.exists(paste0("lemon_explanations_", industry))) {
+  dir.create(paste0("lemon_explanations_", industry))
 }
 
 unique_features <- unique(lemon.results$feature)
 unique_features
-for (i in 1:length(unique_features)){
-  print(i)
-  
-  pdf_name <- paste0("lemon_explanations_35/explanation_", unique_features[i], ".pdf")
-  pdf(pdf_name)
-  
-  df.cscore <- lemon.results[which(lemon.results$feature == unique_features[i]),]
-  df.cscore$Q <- as.factor(df.cscore$Q)
-  
-  p.cscore <- ggplot(data=df.cscore,aes(x=obs,y=effect,colour=Q)) +
-    geom_point() +
-    scale_colour_manual(name="Q",values = c("red", "orange", "blue", "green","black"))
-  
-  print(p.cscore)
-  
-  p.cscore.Q <- ggplot(data=df.cscore,aes(x=Q,y=effect,colour=Q)) +
-    geom_point() +
-    scale_colour_manual(name="Q",values = c("red", "orange", "blue", "green","black"))
-  
-  print(p.cscore.Q)
-  
-  dev.off()
-}
+
+pdf_name <- paste0("lemon_explanations_", industry, "/explanation_", unique_features[i], ".pdf")
+pdf(pdf_name)
+
+indmom <- unique_features[4]
+dolvol <- unique_features[8]
+
+#Adjust this code here
+df.cscore <- lemon.results[which(lemon.results$feature == unique_features[i]),]
+df.cscore
+df.cscore$Q <- as.factor(df.cscore$Q)
+
+p.cscore <- ggplot(data=df.cscore,aes(x=obs,y=effect,colour=Q)) +
+  geom_point() +
+  scale_colour_manual(name="Q",values = c("red", "orange", "blue", "green","black"))
+
+print(p.cscore)
+
+p.cscore.Q <- ggplot(data=df.cscore,aes(x=Q,y=effect,colour=Q)) +
+  geom_point() +
+  scale_colour_manual(name="Q",values = c("red", "orange", "blue", "green","black"))
+
+print(p.cscore.Q)
+
+dev.off()
+
+pdf_name <- paste0("lemon_explanations_", industry, "/explanation_dolvol_indmom.pdf")
+pdf(pdf_name)
+
+# Subset data for dolvol and indmom features
+df_dolvol <- lemon.results[lemon.results$feature == "dolvol", ]
+df_indmom <- lemon.results[lemon.results$feature == "indmom", ]
+
+# Create ggplot
+p <- ggplot() +
+  geom_point(data = df_dolvol, aes(x = obs, y = effect, color = "dolvol")) +
+  geom_point(data = df_indmom, aes(x = obs, y = effect, color = "indmom")) +
+  scale_color_manual(name = "Feature", values = c("dolvol" = "red", "indmom" = "blue"), labels = c("dolvol", "indmom")) +
+  labs(title = paste0("Lime Values for dolvol and indmom - SICID ", industry),
+       x = "Observations", y = "Effect")
+
+# Print and save plot
+print(p)
+dev.off()
 
 length(lemon.results)
 lemon.results
@@ -206,20 +228,53 @@ get.lshapley <- function(k=2,obs){
   return(lemon$results)
 }
 
-if (!file.exists("shapley_plots_35")) {
-  dir.create("shapley_plots_35")
-}
-
 # Shapley values for number of instances for each bin 
+indmom_phis <- c()
+dolvol_phis <- c()
+
 for (q in 1:Q){
   for (i in 1:N){
     tmp <- Shapley$new(predictor, x.interest = X[sample.rows[i, q],])
-    pdf_name <- paste0("shapley_plots_35/shapley_plot_Q:", q, "_i:", i, ".pdf")
-    pdf(pdf_name)
-    
-    # Generate and save Shapley plot for specific Q value and index
-    print(tmp$plot())  # Replace with your actual code for generating the Shapley plot
-    
-    dev.off()
+    features <- tmp$results$feature
+    phis <- tmp$results$phi
+    print(features[5])
+    print(phis[5])
+    print(features[9])
+    print(phis[9])
+    indmom_phis <- rbind(indmom_phis, phis[5])
+    dolvol_phis <- rbind(dolvol_phis, phis[9])
   }
 }
+
+# Graph feature values for both industries
+# Assuming you have already computed the Shapley values for dolvol and indmom for industries with SICID starting with 35 and 60
+# Let's call them dolvol35, indmom35, dolvol60, indmom60
+
+library(ggplot2)
+
+# Create data frames for plotting
+data <- data.frame(phi_index = seq_along(dolvol_phis),
+                     dolvol = dolvol_phis,
+                     indmom = indmom_phis)
+
+# Reshape data for ggplot
+data_long <- tidyr::pivot_longer(data, cols = c(dolvol, indmom), names_to = "Feature", values_to = "Phi")
+
+if (!file.exists(paste0("explainability_plots_", industry))) {
+  dir.create(paste0("explainability_plots_", industry))
+}
+
+# Plot
+pdf_name <- paste0("shapley_explanation_", industry, ".pdf")
+pdf(pdf_name)
+
+plot <- ggplot(data = data_long, aes(x = phi_index, y = Phi, color = Feature)) +
+  geom_point() +
+  geom_line() +
+  labs(title = paste("Shapley Values for SICID", industry),
+       x = "Index",
+       y = "Shapley Value") +
+  scale_color_manual(values = c("dolvol" = "blue", "indmom" = "red")) +
+  theme_minimal()
+plot
+dev.off()
