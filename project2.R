@@ -90,6 +90,23 @@ ggplot(importance_df, aes(x = reorder(Feature, Overall), y = Overall)) +
   theme_light() +
   labs(x = "Feature", y = "Importance") +
   coord_flip()
+# Specify the desired order of features
+desired_order <- c("indmom", "mom12m", "baspread", "chmom", "mom1m", "mom36m",
+                   "return..t.1.", "retvol", "idiovol", "mvel1", "ep", "sp", 
+                   "betasq", "beta", "ill", "agr", "turn", "zerotrade", "dolvol", "nincr")
+
+top_features <- desired_order
+
+importance_df <- importance_df %>% 
+  filter(Feature %in% top_features) %>%
+  mutate(Feature = factor(Feature, levels = desired_order))
+
+# Plot the data
+ggplot(importance_df, aes(x = Feature, y = Overall)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +  # Flips the axes so features are on the y-axis
+  theme_light() +
+  labs(x = "Feature", y = "Importance")
 
 
 library(corrplot)
