@@ -207,7 +207,7 @@ pdf(pdf_name)
 # Subset data for dolvol and indmom features
 df_dolvol <- lemon.results[lemon.results$feature == "dolvol", ]
 df_indmom <- lemon.results[lemon.results$feature == "indmom", ]
-
+nrow(df_indmom)
 # Create ggplot
 p <- ggplot() +
   geom_point(data = df_dolvol, aes(x = obs, y = effect, color = "dolvol")) +
